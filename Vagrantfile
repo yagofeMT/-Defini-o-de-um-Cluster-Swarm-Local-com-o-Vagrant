@@ -1,46 +1,30 @@
-Vagrant.configure("2") do |config|
+machines = {
+  "master" => {"memory" => "1024", "cpu" => "1", "ip" => 100, "image" => "bento/ubuntu=22-04"},
+  "node1" => {"memory" => "1024", "cpu" => "1", "ip" => 100, "image" => "bento/ubuntu=22-04"},
+  "node2" => {"memory" => "1024", "cpu" => "1", "ip" => 100, "image" => "bento/ubuntu=22-04"},
+  "node3" => {"memory" => "1024", "cpu" => "1", "ip" => 100, "image" => "bento/ubuntu=22-04"}
+}
 
-  config.vm.box = "ubuntu/bionic64"
-  config.vm.define "master" do |master|
-    master.vm.network "private_network", ip: "192.168.50.10"
-    master.vm.hostname = "master"
-    
-    # Install Docker and initialize Docker Swarm on master
-    master.vm.provision "shell", inline: <<-SHELL
-      apt-get update
-      apt-get install -y docker.io
-      docker swarm init --advertise-addr 192.168.50.10
-    SHELL
-  end
+Vagrant.configure("2") do ׀config׀
 
-  config.vm.define "node01" do |node01|
-    node01.vm.network "private_network", ip: "192.168.50.11"
-    node01.vm.hostname = "node01"
-    node01.vm.provision "shell", inline: <<-SHELL
-      apt-get update
-      apt-get install -y docker.io
-      docker swarm join --token $(ssh vagrant@192.168.50.10 docker swarm join-token -q worker) 192.168.50.10:2377
-    SHELL
-  end
+  machines.each do ׀name, conf׀
+    config.vm.define "#{name}" do ׀machine׀
+      machine.vm.box = "#{conf["image]}"
+      machine.vm.hostname = "#{name}"
+      machine.vm.network "private_network", ip: "10.10.10.#{conf["ip]}"
+      machine.vm.provider "virtualbox do ׀vb׀
+          vb.name = "#{name}"
+          vb.memory = "#{memory}"
+          vb.cpus = conf["cpu"]
+        end
 
-  config.vm.define "node02" do |node02|
-    node02.vm.network "private_network", ip: "192.168.50.12"
-    node02.vm.hostname = "node02"
-    node02.vm.provision "shell", inline: <<-SHELL
-      apt-get update
-      apt-get install -y docker.io
-      docker swarm join --token $(ssh vagrant@192.168.50.10 docker swarm join-token -q worker) 192.168.50.10:2377
-    SHELL
-  end
+        machine.vm.provision "shell", path: docker.sh
 
-  config.vm.define "node03" do |node03|
-    node03.vm.network "private_network", ip: "192.168.50.13"
-    node03.vm.hostname = "node03"
-    node03.vm.provision "shell", inline: <<-SHELL
-      apt-get update
-      apt-get install -y docker.io
-      docker swarm join --token $(ssh vagrant@192.168.50.10 docker swarm join-token -q worker) 192.168.50.10:2377
-    SHELL
-  end
-
+        if "#{name}" == "master"
+          machine.vm.provision "shell", path: "master.sh"
+        else
+          machine.vm.provision "shell", path: "worker.sh"
+        end
+      end
+    end
 end
